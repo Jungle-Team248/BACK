@@ -11,6 +11,7 @@ export default class Game {
         this.joinable = true;   // 게임 접근 가능 여부
         this.playerCnt = 0;     // 게임 플레이어 수 (max 파악용)
         this.started = false;
+        this.isEmpty = false;
         
         this.host = null;       // 게임을 생성한 사람 또는 첫 번째 유저
         this.mafia = null;      // 게임의 마피아 (매 게임 갱신)
@@ -39,10 +40,6 @@ export default class Game {
     // 게임 host 세팅 : player Arr의 첫 번째 유저 (입장 순서 정렬)
     setHost() {
         this.host = this.player[0].userId;
-    }
-
-    isEmpty() {
-        return (this.playerCnt === 0);
     }
 
     // 게임 입장 : user object에 추가 속성 부여 및 각 array에 push
@@ -98,6 +95,10 @@ export default class Game {
         this.emitAll("notifyReady", {userId : user.userId, isReady: user.ready})
     }
 
+    isReadyToStart() {
+        return this.playerCnt > 1 && (this.turnQue.length === this.playerCnt) ? true : false;
+    }
+
     // 게임 턴 세팅 : 턴 큐로 셔플
     // 4인인 경우 셔플이 잘 안되어서 부득이하게 두 번 돌림. 지우지 말아주세염..
     setGameTurn() {
@@ -119,11 +120,6 @@ export default class Game {
 
     // DB에서 카테고리-단어 선택 -> 임시 샘플 데이터 입력
     async setWord() {
-        // sample data
-        // const categories = ['요리', '과일', '동물'];
-        // const words = {요리: ['라면', '미역국', '카레'], 과일: ['사과', '바나나'], 동물: ['코알라', '용', '펭귄']};
-        // const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
-        // const selectedWord = words[selectedCategory][Math.floor(Math.random() * words[selectedCategory].length)];
         const [categoriesDB] = await dbpool.query('SELECT DISTINCT category FROM GAMEWORD');
         const categories = categoriesDB.map(obj => obj.category);
         const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
@@ -317,7 +313,7 @@ export default class Game {
 
         // User's values 초기화
         this.player.forEach(user => {
-            user.ready = false; // need to modify : 게임 종료시 더 초기화해야할 데이터는 없나? this.joinable을 바꿔줘야할 것 같음. 경우에 따라 true or false
+            user.ready = false; 
             user.mafia = false;
             user.servived = true;
             user.votes = 0;
@@ -345,49 +341,38 @@ export default class Game {
     // (게임 시작 전 나가는 경우에, 꽉 차있다가 자리가 난 경우라면 joinable을 true로 바꿔줘야 할 수 있음)
     
     exitGame(userId) { 
+        console.log(`exiter Id : ${userId}, deleted socket.userId : ${socket.userId}`);
+
         let userIdx = this.player.findIndex(x => x.userId === userId); 
         let exitUser = this.player[userIdx];
         let turnIdx = this.turnQue.findIndex(x => x === userId); 
         let socketIdx = this.socketAll.findIndex(x => x.userId === userId);
+        this.isEmpty = playerCnt === 1 ? true : false; 
         
         const [socket] = this.socketAll.splice(socketIdx, 1);
-        console.log(`exiter Id : ${userId}, deleted socket.userId : ${socket.userId}`);
         this.player.splice(userIdx, 1);
         this.playerCnt--;
 
         this.emitAll("someoneExit", userId);
         
-        // 나가는 사람이 호스트일 경우 호스트 뽑기
-        if (this.playerCnt > 0 && exitUser.userId === this.host) {
-            this.setHost();
-            if (!this.player[0].ready) {
-                this.player[0].ready = true;
-                this.turnQue.push(this.host);
-            }
-            // 호스트 바뀜. 방 내 유저에게 전달 필요. 클라이언트에서 isHost set 필요
-            socket.to(userInfo[this.host].socket).emit("hostChange", this.host);
-        }
-        
+        // started status에 따라 분기
         if (!this.started){
-            console.log("게임 시작 전")
             exitUser.ready && this.turnQue.splice(turnIdx, 1);
-            if (this.playerCnt > 0) {
-                socket.to(userInfo[this.host].socket).emit("readyToStart", {readyToStart: ((this.turnQue.length === this.playerCnt) && (this.playerCnt > 1))});
+
+            if (!this.isEmpty) {
+                socket.to(userInfo[this.host].socket).emit("readyToStart", 
+                    { readyToStart: this.isReadyToStart() });
             }
-        } else {
-            console.log("게임 시작 후");
-            
+        } else { // 게임 시작 후 
             let nightData = {
                 win : null
             }
             
-            if (this.mafia == userId) {
-                console.log("mafia 나감; 바로 시민 승리 게임 close 해야함.");
+            if (this.mafia == userId) { // exitUser == mafia
                 nightData.win = "citizen";
                 this.emitAll("abnormalClose", nightData);
                 this.closeGame();
-            } else if (this.turnQue.length <= 2) {
-                console.log("citizen 나감; 바로 마피아 승리 게임 close 필요");
+            } else if (this.turnQue.length < 3) { // 시민이 나갔고, 남은 유저 수가 2명 이하
                 nightData.win = "mafia";
                 this.emitAll("abnormalClose", nightData);
                 this.closeGame();
@@ -402,6 +387,19 @@ export default class Game {
             }
         }
 
+        // 나가는 사람이 호스트일 경우 호스트 뽑기
+        if (!this.isEmpty && this.host === exitUser.userId) {
+            this.setHost();
+            
+            // host 기본 status : ready true 처리
+            if (!this.player[0].ready) {
+                this.player[0].ready = true;
+                this.turnQue.push(this.host);
+            }
+            // 호스트 바뀜 클라이언트에 정보 전달 필요 : isHost set (client)
+            socket.to(userInfo[this.host].socket).emit("hostChange", this.host);
+        }
+
         exitUser.gameId = null;
         exitUser.state = true;
         delete exitUser.ready;
@@ -410,38 +408,6 @@ export default class Game {
         delete exitUser.votes;
     }
 }
-
-// const user1 = { userId : '재관', socket : '1111user' };
-// const user2 = { userId : '해인', socket : '2222user' };
-// const user3 = { userId : '혜린', socket : '3333user' };
-// const user4 = { userId : '진호', socket : '4444user' };
-// const user5 = { userId : 'user5', socket : '5555user' };
-// const user6 = { userId : 'user6', socket : '6666user' };
-// const user7 = { userId : 'user7', socket : '7777user' };
-// const user8 = { userId : 'user8', socket : '8888user' };
-
-// let game = new Game(Date.now());
-
-// console.log("\n\n----------------- new game! ------------------\n");
-
-// game.joinGame(user1);
-// game.joinGame(user2);
-// game.joinGame(user3);
-// game.joinGame(user4);
-
-// game.player.map(user => {game.readyGame(user.userId)})
-
-// // let now = game.startGame().playerNow.userId;
-// // let next= game.startGame().playerNext.userId;
-// console.log(game.startGame())
-// console.log("host :", game.host, "\nmafia :", game.mafia)
-// console.log("turn :", game.turnQue)
-
-// console.log(game.changePlayer());
-// console.log(game.changePlayer());
-// console.log(game.changePlayer());
-// console.log(game.changePlayer());
-
 
 
 

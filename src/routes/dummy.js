@@ -42,3 +42,8 @@ Object.keys(user).forEach((id) => {
 // for (const property in dummy) {
 //     console.log(property);
 // }
+
+let data = {123 : {id : 1, pass : 1}, 234 : {id : 2, pass : 2}}
+console.log(data);
+delete data[123];
+console.log(data);

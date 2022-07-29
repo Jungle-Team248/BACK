@@ -94,8 +94,6 @@ module.exports = (server) => {
             socket["userId"] = id;
         });
         
-        // socket.on("nickname", (nickname) => (socket["nickname"] = nickname));
-        
         socket.on("new_message", (msg, room, done) => {
             socket.to(room).emit("new_message", msg);
             done();
@@ -106,15 +104,17 @@ module.exports = (server) => {
             connectedClient[socket.id] = {};
         } // client 관리용
         
-        // need to modify : 게임 방에 들어가있으면 방 나가도록 조치 필요함
+        // ingame utility btn을 통해 exit처리된 플레이어
+        // game, socket 양쪽 모두 처리 필요
         socket.on("exit", (userId, roomId, done) => { 
             console.log("someone exiting", userId, roomId);
-            // games[roomId]?.exitGame(userId);
-            console.log(roomId, games[roomId]?.player?.map((user) => user.userId));
-            if (games[roomId]?.isEmpty()) {
-                delete games[roomId];
-                console.log(`${roomId} destroyed`);
+            
+            // server reboot 대비 : client에서 잘못된 roomId로 접근하는 경우 방지
+            if(games[roomId]) {
+                games[roomId].exitGame(userInfo[userId]);
+                games[roomId].isEmpty ? delete games[roomId] : null;
             }
+            
             socket.leave(roomId);
             socket.room = null;
             done();
@@ -124,7 +124,7 @@ module.exports = (server) => {
             console.log("someone disconnecting", socket.userId);
         });
         
-        socket.on('disconnect', () => {
+        socket.on("disconnect", () => {
             console.log(`Client disconnected (id: ${socket.id})`);
 
             const user = userInfo[socket.userId];
@@ -139,7 +139,6 @@ module.exports = (server) => {
                 }
             }
             socket.rooms.forEach(room => {
-                // socket.to(room).emit("roomExit", socket.userId); -> 게임 안에서 중복되는거같아서 일단 주석처리함 (바로 위 exit)
                 room != socket.id && socket.leave(room);
             });
             
