@@ -178,7 +178,7 @@ export default class Game {
         // 사이클 끝났는지 확인하고 notification + 사이클 끝나면 턴 제공하지 않음
         if (this.turnCnt === this.playerCnt - this.rip.length) {
             console.log('턴이 끝났습니다.');
-            this.emitAll("cycleClosed", null);
+            this.emitAll("cycleClosed", this.rip);
             return;
         }
         
@@ -227,7 +227,7 @@ export default class Game {
             let nightData = {
                 win : null,
                 elected : null,
-                voteData : {}
+                voteData : {},
             }
 
             // 분기 : 마피아 정답 맞춤 - 시민들이 마피아에 투표 + 마피아는 틀림 - else

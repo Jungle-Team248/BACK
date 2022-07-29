@@ -11,9 +11,9 @@ module.exports = (server) => {
     const ioServer = new Server(server, {
         cors: {
             // origin: ["https://admin.socket.io", "https://d17xe7xfw04d2o.cloudfront.net"], // 진호
-            origin: ["https://admin.socket.io", "https://d2bxvfgokknit.cloudfront.net"], // 혜린
+            // origin: ["https://admin.socket.io", "https://d2bxvfgokknit.cloudfront.net"], // 혜린
             // origin: ["https://admin.socket.io", "https://d2wm85v592lxtd.cloudfront.net"], // 재관
-            // origin: ["https://admin.socket.io", "https://d1cbkw060yb1pg.cloudfront.net"], // 해인
+            origin: ["https://admin.socket.io", "https://d1cbkw060yb1pg.cloudfront.net"], // 해인
             credentials: true
         },
     });
@@ -109,7 +109,7 @@ module.exports = (server) => {
         // need to modify : 게임 방에 들어가있으면 방 나가도록 조치 필요함
         socket.on("exit", (userId, roomId, done) => { 
             console.log("someone exiting", userId, roomId);
-            // games[roomId]?.exitGame(userId);
+            games[roomId]?.exitGame(userId);
             console.log(roomId, games[roomId]?.player?.map((user) => user.userId));
             if (games[roomId]?.isEmpty()) {
                 delete games[roomId];
