@@ -56,7 +56,6 @@ export default class Game {
         user.gameId = this.gameId;
         user.state = false;        // 게임 in, user state 변경
         user['ready'] = false;     // 인게임용 추가 속성 : 레디 정보
-        user['mafia'] = false;     // 인게임용 추가 속성 : 마피아 정보
         user['servived'] = true;   // 인게임용 추가 속성 : 살았니 죽었니
         user['votes'] = 0;         // 인게임용 추가 속성 : 득표 수 : 밤이되었습니다   
 
@@ -74,7 +73,7 @@ export default class Game {
     // ready - cancle ready 한 번에 작동 (조건 분기 있음)
     // ready 버튼에 onclick으로 game.readyGame, event 유저의 userId 전달
     readyGame(user, socket) {
-        this.socketAll.forEach(socket => console.log(socket.Id));
+        this.socketAll.forEach(socket => console.log(socket.id));
         if (!user.ready) {
             this.turnQue.push(user.userId);
             user.ready = true;
@@ -101,20 +100,20 @@ export default class Game {
     // 게임 턴 세팅 : 턴 큐로 셔플
     // 4인인 경우 셔플이 잘 안되어서 부득이하게 두 번 돌림. 지우지 말아주세염..
     setGameTurn() {
-        this.turnQue = this.turnQue.sort(() => Math.random() - 0.729);
-        this.turnQue = this.turnQue.sort(() => Math.random() - 0.481);
+        // this.turnQue = this.turnQue.sort(() => Math.random() - 0.729);
+        // this.turnQue = this.turnQue.sort(() => Math.random() - 0.481);
+        console.log(this.turnQue);
     }
 
     // 마피아 뽑기
     drawMafia() {
-        this.mafia = this.turnQue[0];
+        this.mafia = this.player[0].userId; // 발표전 특정 id로 fix 필요
         // this.mafia = this.turnQue[Math.floor(Math.random() * this.turnQue.length)]
         console.log("debug1::::::", this.player);
         // console.log("debug::::::", this.player.findIndex(x => x.userId === this.mafia));
         // console.log("debug::::::", this.player[0].mafia);
         // console.log(this.player[this.player.findIndex(x => x.userId === this.mafia)]);
-        this.player[this.player.findIndex(x => x.userId === this.mafia)].mafia = true;
-        console.log("debug2::::::", this.player);
+        // console.log("debug2::::::", this.player);
     }
 
     // DB에서 카테고리-단어 선택 -> 임시 샘플 데이터 입력
@@ -169,7 +168,7 @@ export default class Game {
             }
             setTimeout(()=>{
                 this.openTurn(); // 첫 턴 뽑기
-            }, 9000);
+            }, 11300);
         }, 5000);
     }
 
@@ -178,14 +177,18 @@ export default class Game {
         // 사이클 끝났는지 확인하고 notification + 사이클 끝나면 턴 제공하지 않음
         if (this.turnCnt === this.playerCnt - this.rip.length) {
             console.log('턴이 끝났습니다.');
-            this.emitAll("cycleClosed", null);
+            this.emitAll("cycleClosed", this.rip);
             return;
         }
         
+        console.log('_debug_ before turnQue shift : ', this.turnQue);
+
         let Players = [];
         let nowPlayer = this.turnQue.shift(); // 리턴해 줄 유저! 지금 그릴 사람!
         this.turnQue.push(nowPlayer); // 뽑고 바로 뒤로 밀어넣기
         Players.push(nowPlayer);
+
+        console.log('_debug_ after turnQue shift : ', this.turnQue);
 
         // 만일 현재 턴이 마지막 턴일 경우 현재 턴과 다음 턴은 null 값을 보냄
         this.turnCnt === this.playerCnt - this.rip.length - 1 ? Players.push(null) : Players.push(this.turnQue[0]);
@@ -198,7 +201,7 @@ export default class Game {
 
         const data = { userId : Players, isMafia : isMafia };
         console.log('이번 턴에 대한 정보', data);
-        this.emitAll("singleTurnInfo", data)
+        this.emitAll("singleTurnInfo", data);
     }
 
     // 인게임 : 밤이되었습니다 : 시민 - 투표 / 마피아 - 제시어 맞추기
@@ -247,7 +250,7 @@ export default class Game {
 
             this.player.forEach(user => {
                 if (!this.rip.includes(this.player)) {
-                    console.log('하이',user, user.userId, user.votes);
+                    // console.log('하이',user, user.userId, user.votes);
                     nightData.voteData[user.userId] = user.votes;
                 }
             });
@@ -282,7 +285,7 @@ export default class Game {
             gameuser.votes++; // 득표 수++
             
             // 투표 수 충족시 : 사망 또는 체포 분기
-            if (gameuser.votes == this.playerCnt - this.rip.length - 1) {
+            if (gameuser.votes >= this.playerCnt - this.rip.length - 2) {
                 console.log('사망 분기', gameuser.userId);
                 this.voteRst = gameuser.userId;
                 console.log('시민 아직 살아있나', this.turnQue);
@@ -405,7 +408,6 @@ export default class Game {
         exitUser.gameId = null;
         exitUser.state = true;
         delete exitUser.ready;
-        delete exitUser.mafia;
         delete exitUser.servived;
         delete exitUser.votes;
     }
