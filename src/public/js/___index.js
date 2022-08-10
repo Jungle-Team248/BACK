@@ -25,11 +25,8 @@ const header = document.getElementById("header");
 async function getCameras() {
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
-        console.log(devices);
         const cameras = devices.filter(device => device.kind === 'videoinput');
-        console.log(cameras);
         const currentCamera = myStream.getVideoTracks()[0];
-        console.log(currentCamera);
         cameras.forEach(camera => {
             const option = document.createElement("option");
             option.value = camera.deviceId;
@@ -49,7 +46,6 @@ async function getMedia(deviceId){
             audio: true,
             video: deviceId ? { deviceId } : true
         });
-        console.log(myStream);
         myFace.srcObject = myStream;
         if(!deviceId) {
             getCameras();
@@ -58,24 +54,8 @@ async function getMedia(deviceId){
     }
     catch(e) {
         alert(e);
-        console.log(e);
     }
 }
-
-// function setMute(mute) {
-//     const audioTracks = myStream.getAudioTracks();
-//     console.log(audioTracks);
-//     if(mute) {
-//         muteBtn.innerText = "UnMute";
-//         muted = true;
-//         audioTracks.forEach(track => track.enabled = false);
-//     }
-//     else {
-//         muteBtn.innerText = "Mute";
-//         muted = false;
-//         audioTracks.forEach(track => track.enabled = true);
-//     }
-// }
 
 function handleMuteClick() {
     setMute(!muted);
@@ -83,7 +63,6 @@ function handleMuteClick() {
 
 function handleMuteCameraClick() {
     const cameraTracks = myStream.getVideoTracks();
-    console.log(cameraTracks);
     if(cameraOff) {
         cameraBtn.innerText = "Camera Off";
         cameraOff = false;
@@ -156,31 +135,16 @@ function handleNicknameSubmit(event) {
     input.value = ""; // aSync
 }
 
-// function handleDrawing(event) {
-//     event.preventDefault();
-//     socket.emit
-// }
-
 function showRoom() {
     welcome.hidden = true;
     room.hidden = false;
     header.hidden = true;
-    // camerasSelect.hidden = true;
-    // muteBtn.hidden = true;
-
-    // container.hidden = false;
-    // canvas add 
-    // const socket = io();
-    // const canvas = document.getElementById('myCanvas');
 
     const canvas = document.createElement("canvas");
     canvas.setAttribute("id", "myCanvas");
     canvas.setAttribute("style", 'background: #ddd;');
     container.appendChild(canvas);
     const whiteboard = new Whiteboard(canvas, socket, roomName);
-    // socket.emit("newCanvas", whiteboard);
-    // whiteboard.addEventListener("click", handleDrawing);
-    console.log("__debug", whiteboard);
 
     const h3 = room.querySelector("h3");
     h3.innerText = `Room ${roomName}`;
@@ -203,17 +167,13 @@ socket.on("welcome", async(user, newCount, newbieID) => {
 });
 
 socket.on("offer", async(offer, offersId) => {
-    console.log("receive the offer");
-    console.log(offer);
     // 뉴비는 현재 방안에 있던 모든사람의 offer를 받아 새로운 커넥션을 만들고, 답장을 만든다.
     const answer = await makeConnection(offersId, offer);
     // 답장을 현재 있는 받은 커넥션들에게 각각 보내준다.
     socket.emit("answer", answer, offersId, socket.id);
-    console.log("send the answer");
 });
 
 socket.on("answer", async(answer, newbieID) => {
-    console.log("receive the answer", newbieID);
     // 방에 있던 사람들은 뉴비를 위해 생성한 커섹션에 answer를 추가한다.
     peerConnections[newbieID].setRemoteDescription(answer);
 });
@@ -290,16 +250,12 @@ async function makeConnection(othersId, _offer) {
 
 function handleIce(data, othersId) {
     // ice breack가 생기면? 이를 해당 사람들에게 전달한다.
-    console.log("got ice candidate");
     socket.emit("ice", data.candidate, roomName, othersId, socket.id);
-    console.log("send ice candidate");
 }
 
 function handleAddStream(data, othersId) {
-    console.log("got an stream from my peer");
     // stream을 받아오면, 비디오를 새로 생성하고 넣어준다.
     let video = document.createElement("video");
-    console.log("got others video: ", data);
     document.getElementById("othersStream").appendChild(video);
     video.id = othersId;
     video.autoplay = true;
@@ -316,29 +272,4 @@ socket.on("ice", (ice, othersId) => {
     peerConnections[othersId].addIceCandidate(ice);
 });
 
-// muteBtn.addEventListener("click", handleMuteClick);
 cameraBtn.addEventListener("click", handleMuteCameraClick);
-// camerasSelect.addEventListener("input", handleCameraChange);
-
-
-// // canvas add 
-// ((io, Whiteboard) => {
-//     window.addEventListener('load', () => {
-//         console.log('Connecting to server…');
-    
-//         const socket = io();
-//         const canvas = document.getElementById('myCanvas');
-    
-//         socket.on('connect', () => {
-//             // At this point we have connected to the server
-//             console.log('Connected to server');
-        
-//             // Create a Whiteboard instance
-//             const whiteboard = new Whiteboard(canvas, socket);
-//             // Expose the whiteboard instance
-//             window.whiteboard = whiteboard;
-        
-//         //   printDemoMessage();
-//         }); 
-//     })
-// })(io, Whiteboard); // 마지막에 이건 왜 또 있는 거람? : 일단 지워도 오류가 뜨진 않았음

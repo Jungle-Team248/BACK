@@ -9,9 +9,6 @@ router.post('/friendinfo', isLoggedIn, async (req, res) => {
     const [[pk]] = await dbpool.query('SELECT id FROM USER WHERE userid=?;', req.body.userid);
     const [data] = await dbpool.query('SELECT userid, profile_img FROM USER a join CITIZEN b on a.id = b.friendid WHERE b.myid=?;', pk.id);
 
-    console.log('db에서 불러온 아이디, 프로필 사진 주소: ', data);
-    console.log('user id 목록: ', userInfo);
-
     let friendInfo = {};
 
     data.forEach((info, index) => {
@@ -21,8 +18,6 @@ router.post('/friendinfo', isLoggedIn, async (req, res) => {
         friendInfo[info.userid] = [0, info['profile_img']];
       }
     })
-    console.log("친구들 정보:  ", friendInfo);
-
 
     res.send(friendInfo);
   } catch(err){

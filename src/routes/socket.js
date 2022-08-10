@@ -22,29 +22,7 @@ module.exports = (server) => {
     
     instrument(ioServer, {auth: false});
     
-    // // Socket 및 webRTC 관련 Settings
-    // function publicRooms() {
-    //     const {sockets: {adapter: {sids, rooms}}} = ioServer;
-    //     const publicRooms = [];
-    //     rooms.forEach((_, key) => {
-    //         if(sids.get(key) === undefined) {
-    //             publicRooms.push(key);
-    //         }
-    //     });
-    //     return publicRooms;
-    // }
-    
-    // // room에 몇 명 있나 확인용
-    // function countRoom(roomId) {
-    //     return ioServer.sockets.adapter.rooms.get(roomId)?.size;
-    // }
-    
     ioServer.on("connection", (socket) => {
-
-        socket.onAny((event) => {
-            // console.log(`socket의 id : ${socket.id}`)
-            // console.log(`Socket event : ${event}`);
-        });
 
         socket.on('userinfo', (id) => {
             const user = userInfo[id];
@@ -53,50 +31,33 @@ module.exports = (server) => {
         });
 
         socket.on('loginoutAlert', (userId, status) => {
-            // console.log('loginoutAlert', userId, status);
             (status === 0) && (delete userInfo[userId]);
             socket.broadcast.emit("friendList", userId, status);
         });
 
         socket.on('roomList', (done) => {
-            // real data
-            // const roomList = Object.keys(games).map((roomId) => {
-            //     const game = games[roomId];
-            //     return {host: game.host, playerCnt: game.playerCnt, joinable: game.joinable, gameId: game.gameId};
-            // });
-            // done(roomList);
-
-            // sample data
-            const gamesDummy = [];
-            const hostDummy = ["wooyoungwoo", "sooyeon", "dongbro", "euntak"];
-            for (let i = 0; i < hostDummy.length; i++) {
-                const newGame = {host: hostDummy[i], playerCnt: 6, joinable: false, gameId: i};
-                gamesDummy.push(newGame);
-            }
-            done(gamesDummy);
+            const roomList = Object.keys(games).map((roomId) => {
+                const game = games[roomId];
+                return {host: game.host, playerCnt: game.playerCnt, joinable: game.joinable, gameId: game.gameId};
+            });
+            done(roomList);
         });
 
          // socket enterRoom event 이름 수정 확인 필요
         socket.on("enterRoom", (data, roomId, done) => {
-            console.log(`enterRoom의 ${roomId}`);
-
             socket.room = roomId;
             socket.join(roomId);
             done(games[roomId].host);
-            console.log("debug__ socket join? ", socket.userId, socket.rooms);
-            console.log(roomId, games[roomId].player.map((user) => user.userId));
             // 새로운 유저 입장 알림
             socket.to(roomId).emit("notifyNew", data);
         });
 
         socket.on("notifyOld", (data, toSocketId) => {
             data.isReady = userInfo[data.userId].ready;
-            console.log("debug__ notifyOld : ", data);
             socket.to(toSocketId).emit("notifyOld", data);
         });
 
         socket.on("offer", async (offer, offersSocket, newbieSocket, offersId) => {
-            console.log("new offer received");
             socket.to(newbieSocket).emit("offer", offer, offersSocket, offersId);
         });
     
@@ -108,9 +69,6 @@ module.exports = (server) => {
             socket.to(othersSocket).emit("ice", ice, sendersId);
         });
         
-        
-        // socket.on("nickname", (nickname) => (socket["nickname"] = nickname));
-        
         socket.on("new_message", (msg, room, done) => {
             socket.to(room).emit("new_message", msg);
             done();
@@ -118,25 +76,20 @@ module.exports = (server) => {
 
         socket.on("emoji", (roomId, emoji) => {
             const data = {userId: socket.userId, emoji: emoji};
-            console.log("emoji :: ", roomId, data);
             socket.emit("newEmoji", data);
             socket.to(roomId).emit("newEmoji", data);
         })
 
-        console.log(`A client has connected (id: ${socket.id})`);
         if (!(socket.id in connectedClient)) {
             connectedClient[socket.id] = {};
         } // client 관리용
         
         // need to modify : 게임 방에 들어가있으면 방 나가도록 조치 필요함
         socket.on("exit", (userId, roomId, done) => { 
-            console.log("someone exiting", userId, roomId);
             if (userInfo[userId]?.state === false) { // 서버를 껐다 킨 경우에는 game에 해당 roomId 자체가 없어서 괜찮. 서버는 그대로인데 터졌던 사람이 exit누르면 roomId가 있어서 거기서 나가려는 시도를 해서 터짐
                 games[roomId]?.exitGame(userId);
-                console.log(roomId, games[roomId]?.player?.map((user) => user.userId));
                 if (games[roomId]?.isEmpty()) {
                     delete games[roomId];
-                    console.log(`${roomId} destroyed`);
                 }
                 socket.leave(roomId);
                 socket.room = null;
@@ -145,7 +98,6 @@ module.exports = (server) => {
         });
 
         socket.on("disconnecting", () => {
-            // console.log("someone disconnecting", socket.userId);
             console.log("someone disconnecting", socket.id);
         });
         
@@ -157,42 +109,34 @@ module.exports = (server) => {
             if (user?.state === false) {
                 const roomId = user.gameId;
                 games[roomId].exitGame(user.userId);
-                console.log(roomId, games[roomId].player.map((user) => user.userId));
                 if (games[roomId].isEmpty()) {
                     delete games[roomId];
                     console.log(`${roomId} destroyed`);
                 }
             }
             socket.rooms.forEach(room => {
-                // socket.to(room).emit("roomExit", socket.userId); -> 게임 안에서 중복되는거같아서 일단 주석처리함 (바로 위 exit)
                 room != socket.id && socket.leave(room);
             });
             
             delete userInfo[socket.userId];
             delete connectedClient[socket.id];
-            console.log(socket.userId, userInfo);
-            console.log(games);
         }); // client 관리용
 
         // 여러 명의 socketId 반환
         socket.on('listuserinfo', (listuserid, done) => {
             let listsocketid = new Array();
             for (var i = 0; i < listuserid.length; i++) {
-                // console.log(`유저의 socket id ${userInfo[listuserid[i]]["socket"]}`);
                 listsocketid.push(userInfo[listuserid[i]]["socket"]); // 에러 발생했음. 나중에 try로 묶어주든지 해야할 듯!
             }
 
-            // console.log(`socketid 리스트 ${listsocketid}`);
             
             // 초대하고 싶은 사람 리스트 반환
             done(listsocketid);
-            // socket.emit("listsocketid", listsocketid);
         });
 
         // 초대 보내기
         socket.on("sendinvite",(listsocketid, roomId, myId, done) => {
             for (var i = 0; i < listsocketid.length; i++) {
-                // console.log(`초대하는 socket id ${listsocketid[i]}`);
                 ioServer.to(listsocketid[i]).emit("getinvite", roomId, myId);
             }
             // HOST가 방으로 이동
@@ -254,10 +198,8 @@ module.exports = (server) => {
                 done(false);
                 return null;
             }
-            console.log(`In makeGame : user is ${user}`);
             games[data.gameId] = new Game(data.gameId);
             games[data.gameId].joinGame(user, socket);
-            // console.log("debug__ : games object :", games);
             done(data.gameId);
         }) 
 
@@ -274,16 +216,14 @@ module.exports = (server) => {
                 done(false);
                 return null;
             }
-            console.log(`In joinGame : user is ${user}`);
             let thisGameId;
-            // 랜덤 입장 요청 : from START btn.
+            // 자동 입장 요청 : from START btn.
             if (data.gameId === 0) {
                 const gameIds = Object.keys(games);
                 const gameCount = gameIds.length;
                 let i = 0;
                 for (; i<gameCount; i++) {
                     if (games[gameIds[i]].joinable) {
-                        // console.log("debug__ : iterate games :", games[gameIds[i]]);
                         games[gameIds[i]].joinGame(user, socket);
                         thisGameId = games[gameIds[i]].gameId;
                         break;
@@ -304,7 +244,6 @@ module.exports = (server) => {
                     thisGameId = false;
                 }
             }
-            console.log("debug__ : joined games object :", games);
             done(thisGameId);
         });
 
@@ -338,10 +277,8 @@ module.exports = (server) => {
         // this event emit to ALLPlayer with event result
         // need client!
         socket.on("nightEvent", (data) => {
-            console.log(`nightEvent 전달`, data);
             let user = userInfo[data.userId];
             let submit = data.gamedata.submit; // 제출한 정보
-            console.log(`nightEvent 전달`, user, submit);
             games[data.gameId].nightWork(user, submit);
         });
 

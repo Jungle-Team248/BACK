@@ -4,7 +4,6 @@ const passport = require('passport');
 const bcrypt = require('bcrypt');
 const { isLoggedIn, isNotLoggedIn } = require('./authMiddle');
 const dbpool = require('../lib/db');
-// const crypto = require('crypto');
 
 import {userInfo} from '../server';
 import {createHashedPassword} from '../passport/salted'
@@ -23,23 +22,21 @@ router.get('/', (req, res) => {
 /* hyeRexx : join */
 router.post('/user/join', async (req, res) => {
     const joinInfo = req.body;
-    // const sql = 'SELECT userid FROM STD248.USER where userid'
-    const userInfoCheck = await dbpool.query("\
+
+    const [[[idCheck], [nickCheck], [emailCheck]]] = await dbpool.query("\
         SELECT userid FROM STD248.USER where userid = ?;\
         SELECT userid FROM STD248.USER where nickname = ?;\
         SELECT userid FROM STD248.USER where email = ?;"
-        ,[joinInfo.id, joinInfo.nickname, joinInfo.email]);
+        ,[joinInfo.id, joinInfo.nickname, joinInfo.email]);  
 
-    const [[idCheck], [nickCheck], [emailCheck]] = userInfoCheck[0]
-    
-    let [id, nick, email] = [true, true, true];
-    if (idCheck) {id = false}
-    if (nickCheck) {nick = false}
-    if (emailCheck) {email = false}
+    const id = idCheck === undefined;
+    const nick = nickCheck === undefined;
+    const email = emailCheck === undefined;
+
+    console.log(idCheck, nickCheck, emailCheck);
+    console.log(id, nick, email);
 
     if (id && nick && email) {
-        console.log("join process in");
-
         const { password, salt } = await createHashedPassword(joinInfo.pass);
         
         const sqlRes = await dbpool.query("insert into STD248.USER (userid, pass, nickname, email, salt)\
@@ -49,7 +46,6 @@ router.post('/user/join', async (req, res) => {
             result : 1
         })
     } else {
-        console.log("join process fail")
         res.send({
             result : 0,
             idCheck: id,
@@ -71,7 +67,6 @@ router.post('/login', isNotLoggedIn, (req, res, next) => {
     }
     // 로그인에 실패한 경우
     if (!user) {
-      console.log(info.message);
       return res.send(info.message);
     }
     // 로그인이 성공된 경우 index.js에 있는 serializeUser를 실행함
@@ -89,7 +84,6 @@ router.post('/login', isNotLoggedIn, (req, res, next) => {
 // logout 요청
 router.post('/logout', isLoggedIn, (req, res, next) => {
   // 로그아웃 처리 및 세션 destroy
-  console.log("logout Success");
   req.logout((err) => {
     if (err) {return next(err)}
     req.session.destroy();

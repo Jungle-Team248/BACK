@@ -35,7 +35,7 @@ const makePasswordHashed = (userId, plainPassword) =>
             if (data[0].pass === key.toString('base64')){
                 resolve(true);
             } else {
-                console.log("login 실패함.\n\n")
+                // 로그인 실패시
                 resolve(false);
             }
         });
