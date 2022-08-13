@@ -5,8 +5,9 @@
 <br><br>
 
 ## **포스터**
-<img src="C:\Users\Haein Kim\Downloads\석혜린_mafiArte.pdf">
+[mafiArte_poster.pdf](https://github.com/Studio248/BACK/files/9331034/mafiArte_poster.pdf)
 <br><br>
+
 
 ## 🛠 **아키텍처와 기술 스택**
 **CLIENT**　 　React / Redux / WebRTC <br>
