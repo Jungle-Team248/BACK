@@ -4,6 +4,10 @@
 <img src="https://user-images.githubusercontent.com/96710052/183819911-275000f1-2cb7-4ea2-91ef-7435e6e93f23.png">
 <br><br>
 
+## **포스터**
+<img src="C:\Users\Haein Kim\Downloads\석혜린_mafiArte.pdf">
+<br><br>
+
 ## 🛠 **아키텍처와 기술 스택**
 **CLIENT**　 　React / Redux / WebRTC <br>
 **SERVER**　　Node.js / NGiNX / socket.io <br>
