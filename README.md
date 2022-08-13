@@ -5,7 +5,8 @@
 <br><br>
 
 ## **포스터**
-[mafiArte_poster.pdf](https://github.com/Studio248/BACK/files/9331034/mafiArte_poster.pdf)
+<br>
+<img src="https://user-images.githubusercontent.com/75101582/184475135-5618449a-5f0e-4d02-bbb1-105913308795.jpg">
 <br><br>
 
 
