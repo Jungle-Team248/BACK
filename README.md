@@ -11,9 +11,10 @@
 
 
 ## 🛠 **아키텍처와 기술 스택**
-**CLIENT**　 　React / Redux / WebRTC / CloudFront / S3 <br>
+**CLIENT**　 　React / Redux / WebRTC <br>
 **SERVER**　　Node.js / NGiNX / socket.io <br>
 **DB**　　　　 MySQL / RDS <br>
+**AWS**       Route53 / CloudFront / S3 <br>
 <br><br>
 
 ## 🎠 **몰입도 120% : 인게임 요소**
