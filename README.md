@@ -11,7 +11,7 @@
 
 
 ## 🛠 **아키텍처와 기술 스택**
-**CLIENT**　 　React / Redux / WebRTC <br>
+**CLIENT**　 　React / Redux / WebRTC / CloudFront / S3 <br>
 **SERVER**　　Node.js / NGiNX / socket.io <br>
 **DB**　　　　 MySQL / RDS <br>
 <br><br>
@@ -55,7 +55,7 @@ class Game {
         this.turnQue = [];      // 게임 진행 순서 (queue)
 
         this.turnCnt = 0;       // 사이클 내의 턴 진행 상황
-        this.cycleCnt = 0;      // 게임 반복 횟수
+        this.cycleCnt = 0;      // 게임 반복 횟 수
         this.nightDone = 0;     // night work를 마친 유저의 수 (데이터 리턴 조건 체크용)
 
         this.voteRst = null;    // 시민 투표에서 선출된 사람
